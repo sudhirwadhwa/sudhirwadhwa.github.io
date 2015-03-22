@@ -1,0 +1,78 @@
+---
+title: "outofsample_error_explain"
+author: "Sudhir Wadhwa"
+date: "March 21, 2015"
+output: html_document
+---
+trainingdataset <- read.csv("/Users/sudhir/pml-training.csv", na.strings=c("NA","#DIV/0!", ""))        
+testingdataset <- read.csv('/Users/sudhir/pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))    
+set.seed(12345)      
+S_Trainset <- createDataPartition(trainingdataset$classe, p = 0.8, list = FALSE)     
+S_Training <- trainingdataset[S_Trainset , ]    
+S_Validation <- trainingdataset[-S_Trainset , ]     
+nzvcol <- nearZeroVar(S_Training)      
+S_Training <- S_Training[, -nzvcol]      
+
+
+cntlength <- sapply(S_Training, function(x) {
+  sum(!(is.na(x) | x == ""))
+})           
+
+nullcol <- names(cntlength[cntlength < 0.6 * length(S_Training$classe)])
+descriptcol <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+                 "cvtd_timestamp", "new_window", "num_window")            
+
+excludecols <- c(descriptcol, nullcol)     
+S_Training <- S_Training[, !names(S_Training) %in% excludecols]        
+
+
+
+S_rfModel <- randomForest(classe ~ ., data = S_Training, importance = TRUE, ntrees = 10)     
+S_predict <- predict(S_rfModel, S_Training)          
+print(confusionMatrix(S_predict, S_Training$classe))           
+
+S_pvalidation <- predict(S_rfModel, S_Validation)       
+print(confusionMatrix(S_pvalidation, S_Validation$classe))          
+
+S_FINALPredictTest <- predict(S_rfModel, testingdataset)      
+S_FINALPredictTest          
+answers <- as.vector(S_FINALPredictTest)         
+
+#Here is the output :
+  
+  > print(confusionMatrix(S_pvalidation, S_Validation$classe))      
+Confusion Matrix and Statistics      
+
+Reference        
+Prediction    A    B    C    D    E      
+A 1116    4    0    0    0           
+B    0  755    8    0    0           
+C    0    0  676   11    0          
+D    0    0    0  632    1        
+E    0    0    0    0  720        
+
+Overall Statistics             
+
+#Accuracy : 0.9939          
+95% CI : (0.9909, 0.9961)            
+No Information Rate : 0.2845                     
+P-Value [Acc > NIR] : < 2.2e-16               
+
+Kappa : 0.9923                       
+Mcnemar's Test P-Value : NA                            
+
+Statistics by Class:           
+
+                     Class: A Class: B Class: C Class: D Class: E          
+Sensitivity            1.0000   0.9947   0.9883   0.9829   0.9986          
+Specificity            0.9986   0.9975   0.9966   0.9997   1.0000           
+Pos Pred Value         0.9964   0.9895   0.9840   0.9984   1.0000          
+Neg Pred Value         1.0000   0.9987   0.9975   0.9967   0.9997            
+Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838        
+Detection Rate         0.2845   0.1925   0.1723   0.1611   0.1835          
+Detection Prevalence   0.2855   0.1945   0.1751   0.1614   0.1835        
+Balanced Accuracy      0.9993   0.9961   0.9925   0.9913   0.9993           
+> 
+
+#Out of sample error is  1 - 0.9939 = 0.0061 = 0.61%            
+
